@@ -1,0 +1,191 @@
+/* ===== Reset & variabel ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-primary: #0B4F6C;
+  --color-accent: #056688;
+  --color-bg: #F3F7F8;
+  --color-text: #1A2B3C;
+  --color-white: #FFFFFF;
+  --color-border: #dfe6e9;
+
+  --badge-ok-bg: #d1fadf;   --badge-ok-text: #05603a;
+  --badge-low-bg: #fef0c7;  --badge-low-text: #93370d;
+  --badge-out-bg: #fee4e2;  --badge-out-text: #b42318;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.4;
+}
+
+/* ===== Layout dasar (mobile-first) ===== */
+.dashboard { min-height: 100vh; }
+
+.app-header {
+  background: var(--color-white);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.app-header h1 {
+  font-size: 1.15rem;
+  color: var(--color-primary);
+}
+
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+  
+}
+
+/* ===== 4 tile ringkasan ===== */
+.stat-cards {
+  display: grid;
+  grid-template-columns: 1fr; /* mobile: ditumpuk */
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.stat-card {
+  background: var(--color-white);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.stat-label {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+/* ===== Tombol ===== */
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-weight: bold;
+  cursor: pointer;
+}
+.btn:hover { background: var(--color-accent); }
+.btn-danger { background: var(--badge-out-text); }
+.btn-danger:hover { background: #912018; }
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;     /* boleh turun baris, tidak terpotong */
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.toolbar input {
+  flex: 1 1 200px;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+/* ===== Pesan status (loading / kosong / error / berhasil) ===== */
+#status-message:empty { display: none; }
+#status-message {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+}
+.status-loading { color: var(--color-accent); }
+.status-empty   { color: #52606d; text-align: center; }
+.status-error {
+  background: var(--badge-out-bg) !important;
+  color: var(--badge-out-text);
+  border-color: var(--badge-out-text) !important;
+}
+.status-success {
+  background: var(--badge-ok-bg) !important;
+  color: var(--badge-ok-text);
+}
+
+/* ===== Tabel ===== */
+.table-wrap {
+  overflow-x: auto;       /* yang discroll hanya pembungkus tabel */
+  background: var(--color-white);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+th { background: #eef3f5; font-size: 0.85rem; }
+
+/* ===== Badge status stok ===== */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.badge-available    { background: var(--badge-ok-bg);  color: var(--badge-ok-text); }
+.badge-low-stock    { background: var(--badge-low-bg); color: var(--badge-low-text); }
+.badge-out-of-stock { background: var(--badge-out-bg); color: var(--badge-out-text); }
+
+/* ===== Form tambah buku ===== */
+.form-section {
+  background: var(--color-white);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.form-section h2 {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-primary);
+}
+.book-form {
+  display: grid;
+  grid-template-columns: 1fr;       /* mobile: 1 kolom */
+  gap: 0.75rem;
+  align-items: end;
+}
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field label { font-size: 0.85rem; font-weight: bold; }
+.field input {
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  width: 100%;
+}
+
+/* ===== Tablet: 768px - 1023px ===== */
+@media (min-width: 768px) {
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .book-form  { grid-template-columns: repeat(2, 1fr); }
+  .app-header h1 { font-size: 1.35rem; }
+}
+
+/* ===== Desktop: >= 1024px ===== */
+@media (min-width: 1024px) {
+  .stat-cards { grid-template-columns: repeat(4, 1fr); }
+  .book-form  { grid-template-columns: repeat(4, 1fr) auto; }
+  .content { padding: 1.5rem; }
+}
