@@ -2,29 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import BookRow from './components/BookRow.vue'
 
-// 1. In-Memory 20 Data Seed
-const SEED_BOOKS = [
-  { id: 1, judul: "Clean Code", penulis: "Robert C. Martin", kategori: "Teknologi", stok: 8 },
-  { id: 2, judul: "The Pragmatic Programmer", penulis: "Andrew Hunt", kategori: "Teknologi", stok: 0 },
-  { id: 3, judul: "Designing Data-Intensive Applications", penulis: "Martin Kleppmann", kategori: "Teknologi", stok: 2 },
-  { id: 4, judul: "Bumi Manusia", penulis: "Pramoedya Ananta Toer", kategori: "Sastra", stok: 12 },
-  { id: 5, judul: "Laskar Pelangi", penulis: "Andrea Hirata", kategori: "Sastra", stok: 1 },
-  { id: 6, judul: "Cantik Itu Luka", penulis: "Eka Kurniawan", kategori: "Sastra", stok: 0 },
-  { id: 7, judul: "Atomic Habits", penulis: "James Clear", kategori: "Pengembangan Diri", stok: 15 },
-  { id: 8, judul: "Filosofi Teras", penulis: "Henry Manampiring", kategori: "Pengembangan Diri", stok: 3 },
-  { id: 9, judul: "Deep Work", penulis: "Cal Newport", kategori: "Pengembangan Diri", stok: 0 },
-  { id: 10, judul: "Sapiens: Riwayat Singkat Umat Manusia", penulis: "Yuval Noah Harari", kategori: "Sejarah", stok: 6 },
-  { id: 11, judul: "Guns, Germs, and Steel", penulis: "Jared Diamond", kategori: "Sejarah", stok: 2 },
-  { id: 12, judul: "Nusantara: Sejarah Indonesia", penulis: "Bernard H.M. Vlekke", kategori: "Sejarah", stok: 4 },
-  { id: 13, judul: "The Psychology of Money", penulis: "Morgan Housel", kategori: "Bisnis", stok: 10 },
-  { id: 14, judul: "Zero to One", penulis: "Peter Thiel", kategori: "Bisnis", stok: 2 },
-  { id: 15, judul: "Good to Great", penulis: "Jim Collins", kategori: "Bisnis", stok: 0 },
-  { id: 16, judul: "Cosmos", penulis: "Carl Sagan", kategori: "Sains", stok: 5 },
-  { id: 17, judul: "A Brief History of Time", penulis: "Stephen Hawking", kategori: "Sains", stok: 1 },
-  { id: 18, judul: "The Selfish Gene", penulis: "Richard Dawkins", kategori: "Sains", stok: 0 },
-  { id: 19, judul: "Introduction to Algorithms", penulis: "Thomas H. Cormen", kategori: "Teknologi", stok: 4 },
-  { id: 20, judul: "Man's Search for Meaning", penulis: "Viktor E. Frankl", kategori: "Psikologi", stok: 7 }
-]
+// 1. URL Backend FastAPI Lokal
+const API_URL = "http://127.0.0.1:8000/books"
 
 // 2. Reactive State (ref)
 const books = ref([])
@@ -39,23 +18,24 @@ const form = ref({
   stok: 0
 })
 
-// 3. Mengambil Data Asinkron (Async Request State Pattern)
+// 3. Mengambil Data Asinkron dari FastAPI (GET /books)
 async function muatBuku() {
   keadaan.value = "loading"
   try {
-    // Simulasi jeda network
-    await new Promise(resolve => setTimeout(resolve, 400))
-    
-    const localData = localStorage.getItem("books_data")
-    if (!localData) {
-      localStorage.setItem("books_data", JSON.stringify(SEED_BOOKS))
-      books.value = SEED_BOOKS
-    } else {
-      books.value = JSON.parse(localData)
+    const response = await fetch(API_URL)
+    if (!response.ok) {
+      throw new Error("Status HTTP: " + response.status)
     }
-
-    keadaan.value = books.value.length === 0 ? "empty" : "success"
+    const data = await response.json()
+    if (data.length === 0) {
+      keadaan.value = "empty"
+      books.value = []
+      return
+    }
+    books.value = data
+    keadaan.value = "success"
   } catch (error) {
+    console.error("Gagal memuat data:", error)
     keadaan.value = "error"
   }
 }
@@ -82,32 +62,54 @@ const bukuFinal = computed(() => {
   })
 })
 
-// 6. Action Handlers
+// 6. Action Handlers (Berkomunikasi Langsung ke Backend)
 function toggleSort() {
   isSortAsc.value = !isSortAsc.value
 }
 
-function tambahBuku() {
-  const newId = books.value.length > 0 ? Math.max(...books.value.map(b => b.id)) + 1 : 1
-  const itemBaru = {
-    id: newId,
-    judul: form.value.judul.trim(),
-    penulis: form.value.penulis.trim(),
-    kategori: form.value.kategori.trim(),
-    stok: Number(form.value.stok)
+// POST /books (Tambah Buku Baru)
+async function tambahBuku() {
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        judul: form.value.judul.trim(),
+        penulis: form.value.penulis.trim(),
+        kategori: form.value.kategori.trim(),
+        stok: Number(form.value.stok)
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error("Gagal menambah buku: " + response.status)
+    }
+
+    // Reset Form & Re-fetch data terbaru dari backend
+    form.value = { judul: "", penulis: "", kategori: "", stok: 0 }
+    await muatBuku()
+  } catch (error) {
+    alert("Terjadi kesalahan saat menambah buku")
   }
-  
-  books.value.push(itemBaru)
-  localStorage.setItem("books_data", JSON.stringify(books.value))
-  
-  // Reset Form
-  form.value = { judul: "", penulis: "", kategori: "", stok: 0 }
-  keadaan.value = "success"
 }
 
-function hapusBuku(id) {
-  books.value = books.value.filter(b => b.id !== id)
-  localStorage.setItem("books_data", JSON.stringify(books.value))
+// DELETE /books/{id} (Hapus Buku)
+async function hapusBuku(id) {
+  if (!confirm("Hapus buku ini dari katalog?")) return
+
+  try {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: "DELETE"
+    })
+
+    if (!response.ok) {
+      throw new Error("Gagal menghapus buku: " + response.status)
+    }
+
+    await muatBuku()
+  } catch (error) {
+    alert("Terjadi kesalahan saat menghapus buku")
+  }
 }
 
 onMounted(() => {
