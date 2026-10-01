@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Perpustakaan Cakyu University</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard">
+    <header class="app-header">
+      <h1>Dashboard Perpustakaan Cakyu University</h1>
+    </header>
+
+    <main class="content">
+      <section class="stat-cards" aria-label="Ringkasan statistik">
+        <div class="stat-card">
+          <p class="stat-label">Total Buku</p>
+          <p class="stat-value" id="stat-total">&mdash;</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Stok Menipis + Habis</p>
+          <p class="stat-value" id="stat-low-out">&mdash;</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Jumlah Kategori</p>
+          <p class="stat-value" id="stat-categories">&mdash;</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Total Eksemplar</p>
+          <p class="stat-value" id="stat-copies">&mdash;</p>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Pencarian dan aksi">
+        <input type="search" id="search" placeholder="Cari judul atau penulis..." aria-label="Cari buku">
+        <button type="button" class="btn" id="btn-sort">Urutkan A-Z</button>
+        <button type="button" class="btn" id="btn-refresh">Refresh Data</button>
+      </section>
+
+      <!-- Area status (loading / kosong / error) -->
+      <div id="status-message" role="status"></div>
+
+      <section aria-label="Daftar buku">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Judul</th>
+                <th scope="col">Penulis</th>
+                <th scope="col">Kategori</th>
+                <th scope="col">Stok</th>
+                <th scope="col">Status</th>
+                <th scope="col">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="book-list">
+              <tr>
+                <td>Belajar JavaScript</td>
+                <td>John Doe</td>
+                <td>Pemrograman</td>
+                <td>10</td>
+                <td><span class="badge badge-available">Tersedia</span></td>
+                <td><button type="button" class="btn btn-danger">Hapus</button></td>
+              </tr>
+              <tr>
+                <td>Belajar Python</td>
+                <td>Jane Smith</td>
+                <td>Pemrograman</td>
+                <td>0</td>
+                <td><span class="badge badge-out-of-stock">Stok Habis</span></td>
+                <td><button type="button" class="btn btn-danger">Hapus</button></td>
+              </tr>
+              <tr>
+                <td>Belajar HTML</td>
+                <td>Bob Johnson</td>
+                <td>Pemrograman</td>
+                <td>2</td>
+                <td><span class="badge badge-low-stock">Menipis</span></td>
+                <td><button type="button" class="btn btn-danger">Hapus</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="form-section" aria-label="Form tambah buku">
+        <h2>Tambah Buku Baru</h2>
+        <form id="form-add-book" class="book-form">
+          <div class="field">
+            <label for="book-title">Judul</label>
+            <input type="text" id="book-title" required>
+          </div>
+          <div class="field">
+            <label for="book-author">Penulis</label>
+            <input type="text" id="book-author" required>
+          </div>
+          <div class="field">
+            <label for="book-category">Kategori</label>
+            <input type="text" id="book-category" required>
+          </div>
+          <div class="field">
+            <label for="book-stock">Stok</label>
+            <input type="number" id="book-stock" min="0" step="1" required>
+          </div>
+          <button type="submit" class="btn">Tambah Buku</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
