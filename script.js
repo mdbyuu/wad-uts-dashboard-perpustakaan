@@ -1,16 +1,12 @@
 // =============================================================================
-// 1. DATA SEED AWAL (20 BUKU) & AMBANG BATAS (THRESHOLD)
+// 1. KONFIGURASI, DATA SEED AWAL & THRESHOLD
 // =============================================================================
-// Ambang batas status stok:
-// - Stok Habis : stok === 0
-// - Menipis    : stok 1 sampai 3
-// - Tersedia   : stok >= 4
 const THRESHOLD = {
   OUT_OF_STOCK: 0,
   LOW_STOCK: 3
 };
 
-let books = [
+const INITIAL_BOOKS = [
   { id: 1, judul: "Clean Code", penulis: "Robert C. Martin", kategori: "Teknologi", stok: 8 },
   { id: 2, judul: "The Pragmatic Programmer", penulis: "Andrew Hunt", kategori: "Teknologi", stok: 0 },
   { id: 3, judul: "Designing Data-Intensive Applications", penulis: "Martin Kleppmann", kategori: "Teknologi", stok: 2 },
@@ -33,10 +29,63 @@ let books = [
   { id: 20, judul: "Man's Search for Meaning", penulis: "Viktor E. Frankl", kategori: "Psikologi", stok: 7 }
 ];
 
-let sortAsc = true; // State arah urutan (true = A-Z, false = Z-A)
+// State lokal aplikasi
+let books = [];
+let sortAsc = true;
+let isSimulatingError = false; // Ubah ke true jika ingin mengetes UI error
 
 // =============================================================================
-// 2. DOM SELECTORS
+// 2. MOCK API SERVICE (MENSIMULASIKAN KONTRAK ASYNCHRONOUS REST API)
+// =============================================================================
+const mockApi = {
+  getStorage() {
+    const raw = localStorage.getItem("library_books");
+    if (!raw) {
+      localStorage.setItem("library_books", JSON.stringify(INITIAL_BOOKS));
+      return INITIAL_BOOKS;
+    }
+    return JSON.parse(raw);
+  },
+
+  async fetchAll() {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (isSimulatingError) {
+          reject(new Error("Koneksi ke server terputus (HTTP 500 Network Error)"));
+        } else {
+          resolve(this.getStorage());
+        }
+      }, 500); // Latensi jaringan 500ms
+    });
+  },
+
+  async create(newBook) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const current = this.getStorage();
+        const nextId = current.length > 0 ? Math.max(...current.map(b => b.id)) + 1 : 1;
+        const entry = { ...newBook, id: nextId };
+        const updated = [...current, entry];
+        localStorage.setItem("library_books", JSON.stringify(updated));
+        resolve(entry);
+      }, 300);
+    });
+  },
+
+  async remove(id) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const current = this.getStorage();
+        const updated = current.filter(b => b.id !== id);
+        localStorage.setItem("library_books", JSON.stringify(updated));
+        resolve({ success: true });
+      }, 300);
+    });
+  }
+};
+
+// =============================================================================
+// 3. DOM SELECTORS
 // =============================================================================
 const statTotal = document.getElementById("stat-total");
 const statLowOut = document.getElementById("stat-low-out");
@@ -46,14 +95,50 @@ const statCopies = document.getElementById("stat-copies");
 const bookList = document.getElementById("book-list");
 const searchInput = document.getElementById("search");
 const btnSort = document.getElementById("btn-sort");
+const btnRefresh = document.getElementById("btn-refresh");
 const formAddBook = document.getElementById("form-add-book");
 const statusMessage = document.getElementById("status-message");
 
 // =============================================================================
-// 3. LOGIKA HELPER & METHOD ARRAY NATIVE (ES6+)
+// 4. UI STATE MANAGER (Loading, Empty, Error, Success)
 // =============================================================================
+function setUiState(type, message = "") {
+  statusMessage.className = "";
+  if (!type) {
+    statusMessage.textContent = "";
+    return;
+  }
 
-// Helper untuk badge class & text
+  switch (type) {
+    case "loading":
+      statusMessage.className = "status-loading";
+      statusMessage.textContent = "Sedang mengambil data dari katalog...";
+      break;
+    case "error":
+      statusMessage.className = "status-error";
+      statusMessage.textContent = message || "Terjadi kesalahan saat menghubungi server.";
+      break;
+    case "empty":
+      statusMessage.className = "status-empty";
+      statusMessage.textContent = message || "Data buku tidak ditemukan.";
+      break;
+    case "success":
+      statusMessage.className = "status-success";
+      statusMessage.textContent = message;
+      setTimeout(() => {
+        // Hilangkan pesan notifikasi sukses setelah 2.5 detik
+        if (statusMessage.className === "status-success") {
+          statusMessage.textContent = "";
+          statusMessage.className = "";
+        }
+      }, 2500);
+      break;
+  }
+}
+
+// =============================================================================
+// 5. DATA COMPUTATION & RENDERING
+// =============================================================================
 function getStockBadge(stok) {
   if (stok === THRESHOLD.OUT_OF_STOCK) {
     return { label: "Stok Habis", className: "badge-out-of-stock" };
@@ -64,25 +149,17 @@ function getStockBadge(stok) {
   return { label: "Tersedia", className: "badge-available" };
 }
 
-// 4 Kartu Statistik murni dihitung dari array books
 function updateStatCards() {
-  // Tile 1: Total Buku
   statTotal.textContent = books.length;
-
-  // Tile 2: Stok Menipis + Habis (pakai .filter())
-  const lowOrOut = books.filter(b => b.stok <= THRESHOLD.LOW_STOCK).length;
-  statLowOut.textContent = lowOrOut;
-
-  // Tile 3: Jumlah Kategori Unik (pakai .map() + Set)
+  statLowOut.textContent = books.filter(b => b.stok <= THRESHOLD.LOW_STOCK).length;
+  
   const uniqueCategories = new Set(books.map(b => b.kategori.trim().toLowerCase()));
   statCategories.textContent = uniqueCategories.size;
 
-  // Tile 4: Total Eksemplar (pakai .reduce())
   const totalCopies = books.reduce((acc, curr) => acc + Number(curr.stok), 0);
   statCopies.textContent = totalCopies;
 }
 
-// Helper sanitasi string sederhana untuk menghindari injeksi HTML
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -91,36 +168,31 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-// Render isi tabel ke DOM (Filter + Sort berantai)
 function renderTable() {
   const query = searchInput.value.trim().toLowerCase();
 
-  // 1. Filter pencarian berdasarkan judul atau penulis (.filter())
-  let result = books.filter(book =>
+  let filtered = books.filter(book =>
     book.judul.toLowerCase().includes(query) ||
     book.penulis.toLowerCase().includes(query)
   );
 
-  // 2. Pengurutan A-Z / Z-A berdasarkan judul (.sort())
-  result.sort((a, b) => {
+  filtered.sort((a, b) => {
     const comp = a.judul.localeCompare(b.judul, "id", { sensitivity: "base" });
     return sortAsc ? comp : -comp;
   });
 
-  // Tampilkan pesan kosong jika pencarian tidak menemukan hasil
-  if (result.length === 0) {
+  if (filtered.length === 0) {
     bookList.innerHTML = "";
-    statusMessage.className = "status-empty";
-    statusMessage.textContent = "Buku yang dicari tidak ditemukan.";
+    setUiState("empty", "Tidak ada buku yang sesuai dengan pencarian.");
     return;
   }
 
-  // Bersihkan pesan status jika data ditemukan
-  statusMessage.textContent = "";
-  statusMessage.className = "";
+  // Jika ada data yang tampil dan bukan status error/success, bersihkan area status
+  if (!statusMessage.classList.contains("status-error") && !statusMessage.classList.contains("status-success")) {
+    setUiState(null);
+  }
 
-  // Render baris ke tabel
-  bookList.innerHTML = result.map(book => {
+  bookList.innerHTML = filtered.map(book => {
     const badge = getStockBadge(book.stok);
     return `
       <tr>
@@ -130,7 +202,7 @@ function renderTable() {
         <td>${book.stok}</td>
         <td><span class="badge ${badge.className}">${badge.label}</span></td>
         <td>
-          <button type="button" class="btn btn-danger" onclick="deleteBook(${book.id})">Hapus</button>
+          <button type="button" class="btn btn-danger" onclick="handleDeleteBook(${book.id})">Hapus</button>
         </td>
       </tr>
     `;
@@ -138,11 +210,27 @@ function renderTable() {
 }
 
 // =============================================================================
-// 4. EVENT HANDLERS
+// 6. ASYNCHRONOUS CONTROLLERS (async/await + try/catch)
 // =============================================================================
 
-// Tambah Buku Baru
-formAddBook.addEventListener("submit", (e) => {
+// Mengambil seluruh data buku
+async function loadBooks() {
+  setUiState("loading");
+  bookList.innerHTML = "";
+
+  try {
+    const data = await mockApi.fetchAll();
+    books = data;
+    updateStatCards();
+    renderTable();
+  } catch (error) {
+    updateStatCards();
+    setUiState("error", error.message);
+  }
+}
+
+// Menambah data buku baru
+formAddBook.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const titleInput = document.getElementById("book-title");
@@ -150,44 +238,54 @@ formAddBook.addEventListener("submit", (e) => {
   const categoryInput = document.getElementById("book-category");
   const stockInput = document.getElementById("book-stock");
 
-  const newId = books.length > 0 ? Math.max(...books.map(b => b.id)) + 1 : 1;
-
-  const newBook = {
-    id: newId,
+  const payload = {
     judul: titleInput.value.trim(),
     penulis: authorInput.value.trim(),
     kategori: categoryInput.value.trim(),
     stok: parseInt(stockInput.value, 10)
   };
 
-  books.push(newBook);
-  formAddBook.reset();
-
-  updateStatCards();
-  renderTable();
+  try {
+    setUiState("loading");
+    await mockApi.create(payload);
+    formAddBook.reset();
+    await loadBooks();
+    setUiState("success", `Buku "${payload.judul}" berhasil disimpan!`);
+  } catch (error) {
+    setUiState("error", "Gagal menyimpan buku ke database.");
+  }
 });
 
-// Hapus Buku berdasarkan ID
-window.deleteBook = function(id) {
-  books = books.filter(b => b.id !== id);
-  updateStatCards();
-  renderTable();
+// Menghapus data buku
+window.handleDeleteBook = async function(id) {
+  if (!confirm("Apakah Anda yakin ingin menghapus buku ini dari katalog?")) return;
+
+  try {
+    setUiState("loading");
+    await mockApi.remove(id);
+    await loadBooks();
+    setUiState("success", "Buku berhasil dihapus.");
+  } catch (error) {
+    setUiState("error", "Gagal menghapus data buku.");
+  }
 };
 
-// Pencarian Live
+// =============================================================================
+// 7. EVENT LISTENERS
+// =============================================================================
 searchInput.addEventListener("input", () => {
   renderTable();
 });
 
-// Toggle Urutkan A-Z / Z-A
 btnSort.addEventListener("click", () => {
   sortAsc = !sortAsc;
   btnSort.textContent = sortAsc ? "Urutkan A-Z" : "Urutkan Z-A";
   renderTable();
 });
 
-// =============================================================================
-// 5. INISIALISASI PERTAMA KALI
-// =============================================================================
-updateStatCards();
-renderTable();
+btnRefresh.addEventListener("click", () => {
+  loadBooks();
+});
+
+// Eksekusi pemanggilan data saat dokumen selesai dimuat
+loadBooks();
