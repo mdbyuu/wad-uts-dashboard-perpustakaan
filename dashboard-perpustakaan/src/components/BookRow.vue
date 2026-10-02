@@ -1,4 +1,7 @@
 <script setup>
+import { computed } from 'vue'
+import { BATAS_MENIPIS } from '../constants'
+
 // Menerima data 1 buku dari parent (App.vue) lewat props
 const props = defineProps({
   book: {
@@ -10,12 +13,13 @@ const props = defineProps({
 // Custom event untuk mengirim aksi hapus kembali ke parent
 const emit = defineEmits(['delete-book'])
 
-// Ambang batas stok lokal untuk badge
-const getBadge = (stok) => {
+// Badge dihitung otomatis dari stok
+const badge = computed(() => {
+  const stok = props.book.stok
   if (stok === 0) return { label: 'Stok Habis', class: 'badge-out' }
-  if (stok <= 3) return { label: 'Menipis', class: 'badge-low' }
+  if (stok <= BATAS_MENIPIS) return { label: 'Menipis', class: 'badge-low' }
   return { label: 'Tersedia', class: 'badge-ok' }
-}
+})
 </script>
 
 <template>
@@ -25,14 +29,12 @@ const getBadge = (stok) => {
     <td><span class="category-tag">{{ book.kategori }}</span></td>
     <td>{{ book.stok }}</td>
     <td>
-      <span :class="['badge', getBadge(book.stok).class]">
-        {{ getBadge(book.stok).label }}
-      </span>
+      <span :class="['badge', badge.class]">{{ badge.label }}</span>
     </td>
     <td>
-      <button 
-        type="button" 
-        class="btn-delete" 
+      <button
+        type="button"
+        class="btn-delete"
         @click="emit('delete-book', book.id)"
       >
         Hapus
@@ -74,4 +76,4 @@ td {
   background: #dc2626;
   color: white;
 }
-</style>
+</style> 
